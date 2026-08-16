@@ -1,0 +1,81 @@
+name: Live smoke
+
+# One real conversation against the Anthropic API, dispatched by hand and never on a push.
+#
+# Three reasons it is not in `ci.yml`, and the third is the one that decides it.
+#
+# It costs money per run, and a suite that spends is a suite that must be asked for. It needs
+# `ANTHROPIC_API_KEY`, and a secret is not available to a workflow run from a forked pull request —
+# so on a public repository the step would not fail loudly, it would fail *for contributors only*,
+# which is worse. And it does not assert anything about this module's logic: `DifferentialMemoryTest`
+# and `RaboshMemoryToolHandlerTest` settle the six commands between them, against an independent
+# oracle and against the published specification. What this catches is the **SDK moving underneath a
+# pinned version** — `ToolRunnerCreateParams` is a builder on a beta surface — which is a question
+# worth asking when the pin moves and before a release, not on every commit.
+#
+# The cheap half of that canary is Dependabot: it opens the bump, `ci.yml` compiles this module
+# against the new surface, and `checkKotlinAbi` fails if the handler's signatures moved with it. This
+# workflow is the expensive half, and it is what the bump's pull request gets dispatched against
+# before it is merged.
+#
+# **A release runs it.** That is a checklist item rather than a `needs:` edge, deliberately: wiring it
+# into `release.yml` would put a paid network call between a tag and a publish, where a rate limit or
+# an outage would spend the tag. See `release.yml` for what a tag costs.
+#
+# Every action is pinned to a commit SHA; see the note at the top of ci.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or SHA to run against. Defaults to the default branch.'
+        required: false
+        type: string
+
+concurrency:
+  group: smoke
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    # The key lives in an environment rather than in repository secrets, so reaching it needs an
+    # approval and every use is recorded as a deployment. A workflow that can spend money is a
+    # workflow worth being able to audit after the fact.
+    environment: live-api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      # `LiveSmokeTest` **fails** rather than skips when the key is absent — a smoke test that skips
+      # itself is a green run that proved nothing, which is the whole defect the tagged suites exist
+      # to avoid. So an unset secret is reported here rather than being quietly tolerated.
+      - name: Run the live smoke test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: ./gradlew test -Prabosh.memory.smoke --tests '*LiveSmokeTest*' --stacktrace
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: smoke-test-reports
+          path: '**/build/reports/tests/**'
+          retention-days: 7

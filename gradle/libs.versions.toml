@@ -1,0 +1,46 @@
+# Centralised version catalogue. Versions verified 2026-08-16 against Maven Central: every entry is
+# the latest stable release. No pre-releases — those need asking first.
+#
+# Dependency policy (see CLAUDE.md): JetBrains and Kotlin libraries are pre-approved; everything
+# else requires explicit confirmation before it is written here.
+#
+#   - `anthropic-java` is the reason this repository exists and is the one third-party *runtime*
+#     dependency it may have. Confirmed.
+#   - `junit` is test-only and never reaches the published POM. Confirmed 2026-08-16, against a
+#     hand-rolled harness, because rabosh already pins the same version for the same suites.
+
+[versions]
+kotlin = "2.4.10"
+
+# The two pins that must be exact, never a range and never a snapshot. There is no shared CI matrix
+# across the repository boundary, so the pin is the whole of the mitigation for cross-repo skew —
+# see CLAUDE.md, "Why this is a separate repository".
+#
+# `anthropic-java` moves weekly. Do not chase releases: the live smoke test (`-Prabosh.memory.smoke`)
+# is the canary, and it is deliberately outside `build`.
+anthropic = "2.54.0"
+# `rabosh-api` moves on a format-permanence cadence. Its transitive closure is rabosh-query,
+# rabosh-index, rabosh-catalog, rabosh-core, rabosh-jsonpath, rabosh-variant and the Kotlin stdlib —
+# no other third party, which is the claim this repository exists to keep true of the engine.
+rabosh = "0.3.0"
+
+# Test-only.
+junit = "6.1.2"
+dokka = "2.2.0"
+
+# The engine's floor, and therefore this module's. FFM (Arena, MemorySegment, FileChannel.map with
+# an Arena) needs 22+; 25 is the LTS.
+jvmToolchain = "25"
+
+[libraries]
+anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
+rabosh-api = { module = "app.oreshkov:rabosh-api", version.ref = "rabosh" }
+
+# Versions of the two below come from junit-bom.
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }

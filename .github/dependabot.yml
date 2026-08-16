@@ -1,0 +1,50 @@
+# Two ecosystems, both grouped into one pull request each.
+#
+# Grouping is the point rather than a convenience. Ungrouped, a week produces several branches that
+# each run the full two-platform matrix, and a reviewer reads several diffs to learn one thing.
+# Grouped, the question is "does the build still pass with everything moved forward", which is the
+# question that actually matters.
+#
+# `gradle` reads `gradle/libs.versions.toml` directly, so the rule that versions are centralised and
+# never inlined in a build script survives contact with the bot. There is no `/build-logic` entry
+# because there is no included build; `settings.gradle.kts` says why.
+#
+# **The `anthropic-java` bump is the one that matters, and this is the cheap half of its canary.**
+# The pin is exact and deliberately not chased, but a bump still has to be *seen*: Dependabot opens
+# it, `ci.yml` compiles the handler against the new surface, and `checkKotlinAbi` fails if a
+# signature this module implements moved underneath it. The expensive half is `smoke.yml`, dispatched
+# against the bump's branch before it is merged. Neither is a reason to merge one on the day it
+# arrives.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    # Actions are pinned by commit SHA with the version in a trailing comment. Dependabot
+    # understands that pin and rewrites both halves; a bare SHA with no comment it would leave alone.
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "Update"
+    labels: ["dependencies"]
+
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      gradle:
+        patterns: ["*"]
+    # The toolchain policy is "latest stable, never a pre-release". Kotlin, Dokka and the SDK all
+    # ship -Beta and -RC artifacts to the same coordinates, so the bot has to be told.
+    ignore:
+      - dependency-name: "*"
+        versions: ["*-Beta*", "*-RC*", "*-alpha*", "*-eap*", "*-M[0-9]*"]
+    commit-message:
+      prefix: "Update"
+    labels: ["dependencies"]

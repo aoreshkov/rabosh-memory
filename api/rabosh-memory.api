@@ -1,0 +1,72 @@
+public final class app/oreshkov/rabosh/memory/MemoryOptions {
+	public static final field Companion Lapp/oreshkov/rabosh/memory/MemoryOptions$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;JIZZZZ)V
+	public synthetic fun <init> (Ljava/lang/String;JIZZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCreateOverwrites ()Z
+	public final fun getHistory ()Z
+	public final fun getListingIndex ()Z
+	public final fun getMaxMemoryBytes ()J
+	public final fun getScope ()Ljava/lang/String;
+	public final fun getTrackAccess ()Z
+	public final fun getViewMaxChars ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class app/oreshkov/rabosh/memory/MemoryOptions$Companion {
+	public final fun getDEFAULT ()Lapp/oreshkov/rabosh/memory/MemoryOptions;
+}
+
+public final class app/oreshkov/rabosh/memory/MemoryOptionsKt {
+	public static final field DEFAULT_MAX_MEMORY_BYTES J
+	public static final field DEFAULT_SCOPE Ljava/lang/String;
+	public static final field DEFAULT_VIEW_MAX_CHARS I
+}
+
+public final class app/oreshkov/rabosh/memory/MemoryPath {
+	public static final field INSTANCE Lapp/oreshkov/rabosh/memory/MemoryPath;
+	public static final field MAX_PATH_BYTES I
+	public static final field MAX_SEGMENT_BYTES I
+	public static final field ROOT Ljava/lang/String;
+	public final fun ancestors (Ljava/lang/String;)Ljava/util/List;
+	public final fun isExcludedFromListing (Ljava/util/List;)Z
+	public final fun isRoot (Ljava/lang/String;)Z
+	public final fun normalise (Ljava/lang/String;)Ljava/lang/String;
+	public final fun segmentsBelow (Ljava/lang/String;Ljava/lang/String;)Ljava/util/List;
+}
+
+public final class app/oreshkov/rabosh/memory/MemoryUsage {
+	public final fun getBytes ()J
+	public final fun getMemories ()J
+	public fun toString ()Ljava/lang/String;
+}
+
+public class app/oreshkov/rabosh/memory/RaboshMemoryToolHandler : com/anthropic/helpers/BetaMemoryToolHandler, java/lang/AutoCloseable {
+	public static final field Companion Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler$Companion;
+	public fun <init> (Lapp/oreshkov/rabosh/api/Rabosh;)V
+	public fun <init> (Lapp/oreshkov/rabosh/api/Rabosh;Lapp/oreshkov/rabosh/memory/MemoryOptions;)V
+	public synthetic fun <init> (Lapp/oreshkov/rabosh/api/Rabosh;Lapp/oreshkov/rabosh/memory/MemoryOptions;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun create (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public fun delete (Ljava/lang/String;)Ljava/lang/String;
+	public final fun expireBefore (Ljava/time/Instant;)J
+	protected final fun getDatabase ()Lapp/oreshkov/rabosh/api/Rabosh;
+	protected final fun getOptions ()Lapp/oreshkov/rabosh/memory/MemoryOptions;
+	public fun insert (Ljava/lang/String;JLjava/lang/String;)Ljava/lang/String;
+	public static final fun open (Ljava/nio/file/Path;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public static final fun open (Ljava/nio/file/Path;Lapp/oreshkov/rabosh/memory/MemoryOptions;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public static final fun open (Ljava/nio/file/Path;Lapp/oreshkov/rabosh/memory/MemoryOptions;Lapp/oreshkov/rabosh/api/RaboshOptions;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public fun rename (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public fun strReplace (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+	public final fun usage ()Lapp/oreshkov/rabosh/memory/MemoryUsage;
+	public fun view (Ljava/lang/String;Ljava/util/Optional;)Ljava/lang/String;
+}
+
+public final class app/oreshkov/rabosh/memory/RaboshMemoryToolHandler$Companion {
+	public final fun open (Ljava/nio/file/Path;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public final fun open (Ljava/nio/file/Path;Lapp/oreshkov/rabosh/memory/MemoryOptions;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public final fun open (Ljava/nio/file/Path;Lapp/oreshkov/rabosh/memory/MemoryOptions;Lapp/oreshkov/rabosh/api/RaboshOptions;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+	public static synthetic fun open$default (Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler$Companion;Ljava/nio/file/Path;Lapp/oreshkov/rabosh/memory/MemoryOptions;Lapp/oreshkov/rabosh/api/RaboshOptions;ILjava/lang/Object;)Lapp/oreshkov/rabosh/memory/RaboshMemoryToolHandler;
+}
+

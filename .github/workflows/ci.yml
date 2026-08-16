@@ -1,0 +1,92 @@
+name: CI
+
+# Every action is pinned to a commit SHA with its version in the comment beside it. A major tag is
+# a moving reference: whoever can move it can run code in a job that has this repository checked
+# out, and that is the attack every recent Actions supply-chain incident has used. The comment is
+# not decoration — it is what Dependabot rewrites and what makes the bump readable in a diff.
+#
+# `gradle/actions` is deliberately held at v5 rather than v6. v6 extracts caching into
+# `gradle-actions-caching`, a proprietary component not covered by the MIT licence, and states that
+# upgrading constitutes accepting its commercial Terms of Use. This repository's dependency policy
+# does not let a build acquire one of those silently.
+#
+# What is **not** here is the live smoke test. It costs money per run and needs a key, and a suite
+# that needs a network and a card must not be able to fail a commit. It lives in `smoke.yml`,
+# dispatched by hand, and a release runs it. The thing it is a canary for — the SDK moving underneath
+# a pinned version — is watched by Dependabot instead, which is free and does not need a secret that
+# a fork's pull request cannot see anyway.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The wrapper jar is committed, so it is code this repository ships. This checks it against
+      # Gradle's published checksums; `distributionSha256Sum` in gradle-wrapper.properties pins the
+      # distribution it downloads. Two different files, two separate pins, both needed.
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          # The engine underneath maps segments through the FFM API, final since JDK 22; 25 is the
+          # LTS, and it is the engine's floor rather than this module's preference.
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      # Both platforms are load-bearing rather than a formality, and for two separate reasons.
+      # `MemoryPathTest` covers the Windows path spellings that are the whole reason normalisation is
+      # a pure string function; `CrashSafetyTest` kills its child with `TerminateProcess` there and
+      # `SIGKILL` here, and a mapped file that was left open cannot be deleted on Windows — so a
+      # leaked mapping fails there immediately and deterministically rather than as a drift.
+      #
+      # `build` runs the suites, `checkKotlinAbi` and `checkNoNioPath`. The ABI dump matters more here
+      # than it does in the engine: this module's job is to keep implementing an interface that belongs
+      # to somebody else, and the dump is what makes an SDK bump that quietly changed a signature fail
+      # at the commit that took it rather than at a consumer's.
+      - name: Build and check
+        run: ./gradlew build --stacktrace
+
+      # The published artefacts are part of the deliverable: this catches a broken POM, a Dokka
+      # failure or a missing sources jar at the point it is introduced rather than at a release. It is
+      # also the only thing that runs Dokka, whose output is the `javadoc` classifier Central requires.
+      - name: Check the publication
+        if: matrix.os == 'ubuntu-latest'
+        run: ./gradlew publishToMavenLocal --stacktrace
+
+      # `bundleForCentral` is deliberately not run here, and the reason is the check inside it. It
+      # requires a `.asc` beside every deployed file — an unsigned bundle being exactly what a release
+      # run with the secrets unset produces — and CI has no signing key, so the step would fail for a
+      # reason that is the check working. What proves the bundle is the release workflow's **dry run**,
+      # which stages, signs, uploads and lets the Portal validate, then drops the deployment one call
+      # short of the irreversible door. Run it before the first release; `release.yml` says how.
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: '**/build/reports/tests/**'
+          retention-days: 7
