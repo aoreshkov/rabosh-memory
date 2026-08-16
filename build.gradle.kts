@@ -400,13 +400,32 @@ tasks.register("bundleForCentral") {
                     }
                 }
 
-                val expected = required.flatMapTo(mutableSetOf()) { name ->
-                    listOf(name) + companions.map { "$name.$it" }
+                // A signature is a deployed file like any other, so Gradle writes checksums beside it
+                // too -- `…​.pom.asc.sha1` and friends. Central does not ask for those and does not
+                // refuse them, so they are tolerated here rather than required: the `companions` list
+                // above stays the *requirement*, and this is the *permission*.
+                //
+                // Getting this wrong is what the first signed run found. The expectation used to be
+                // built from `required` and `companions` alone, with a loose escape for anything
+                // ending `.sha256` or `.sha512` -- which silently covered `.asc.sha256` while leaving
+                // `.asc.md5` and `.asc.sha1` reported as files a release does not produce. Every local
+                // check until then had run *unsigned*, where no `.asc` exists and neither do its
+                // companions, so the one case that could fail was the one case never exercised. Hence
+                // the enumeration below is total: each deployed file, its signature, and a checksum of
+                // either, with no wildcard left to hide behind.
+                val checksums = listOf("md5", "sha1", "sha256", "sha512")
+                val expected = buildSet {
+                    for (name in required) {
+                        for (base in listOf(name, "$name.asc")) {
+                            add(base)
+                            checksums.forEach { add("$base.$it") }
+                        }
+                    }
                 }
                 val unexpected = entries
                     .filter { it.startsWith(prefix) }
                     .map { it.removePrefix(prefix) }
-                    .filterNot { it in expected || it.substringAfterLast('.') in setOf("sha256", "sha512") }
+                    .filterNot { it in expected }
                 if (unexpected.isNotEmpty()) {
                     problems += "staged ${unexpected.sorted().joinToString()}, which a release of " +
                         "this module does not produce. Publishing a file by accident is as permanent " +
