@@ -1,0 +1,13 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question, idea, or "should this support X"
+    url: https://github.com/aoreshkov/rabosh-memory/discussions
+    about: Discussions is the place for these. They get better answers there and stay findable.
+
+  - name: Suspected vulnerability
+    url: https://github.com/aoreshkov/rabosh-memory/security/advisories/new
+    about: Private reporting, never a public issue. SECURITY.md has the threat model.
+
+  - name: A bug in the storage engine underneath
+    url: https://github.com/aoreshkov/rabosh/issues
+    about: A corrupt store file, or a query returning a document a snapshot should not see. If unsure which, file it here and it will be moved.

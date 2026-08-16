@@ -1,0 +1,80 @@
+name: Bug report
+description: The handler returned something it should not have, or the store ended up in a state it should not have.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for suspected vulnerabilities.** Those go through
+        [private reporting](https://github.com/aoreshkov/rabosh-memory/security/advisories/new); see
+        [SECURITY.md](https://github.com/aoreshkov/rabosh-memory/blob/main/SECURITY.md).
+
+        Some surprising behaviour here is deliberate — the inconsistent `Error: ` prefixes, `create`
+        refusing to overwrite, a rejected path returning the command's own "does not exist" string.
+        [Deliberate divergences](https://github.com/aoreshkov/rabosh-memory#deliberate-divergences)
+        lists them with reasons. Worth a look first; if you disagree with one, file it anyway and say so.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected the handler to return or do, and what it did instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: |
+        The sequence of memory-tool commands, with the **exact** `path` and content strings — literal,
+        not paraphrased, since whitespace and duplicate substrings are usually the whole story.
+        Small beats realistic. A failing seed from `DifferentialMemoryTest` is ideal.
+      placeholder: |
+        1. create  /memories/notes.md  with "a\nb\nb\n"
+        2. str_replace  /memories/notes.md  old="b"  new="c"
+        → returned: …
+        → expected: …
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: rabosh-memory, JDK, and the `anthropic-java` / `rabosh-api` versions your build actually resolved — not the ones this project pins, if you have overridden them.
+      placeholder: "rabosh-memory 0.1.1, JDK 25 (Temurin), anthropic-java 2.54.0, rabosh-api 0.3.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      description: Path normalisation and the crash instrument differ here, so it matters.
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: fresh-store
+    attributes:
+      label: Does it reproduce on a fresh store?
+      options:
+        - "Yes — a brand new store reproduces it"
+        - "No — only on a store with particular history"
+        - "Not checked"
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Non-default MemoryOptions
+      description: "`listingIndex`, `scope`, size caps, retention — anything not left at its default."
+    validations:
+      required: false

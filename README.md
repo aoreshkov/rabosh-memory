@@ -35,6 +35,56 @@ Rabosh.open(Path.of("memories")).use { db ->
 `RaboshMemoryToolHandler.open(Path.of("memories"))` is the one-liner for a host whose only use for
 rabosh is this handler; it opens the store, owns it, and closes it with the handler.
 
+## Installation
+
+One coordinate. Both dependencies below are declared `api` rather than `implementation`, because
+`BetaMemoryToolHandler` is in this module's supertype list and `Rabosh` is a public constructor
+parameter — you cannot compile against the handler without them, so they arrive with it and you do
+not name either one yourself.
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("app.oreshkov:rabosh-memory:0.1.1")
+}
+```
+
+With a version catalogue:
+
+```toml
+# gradle/libs.versions.toml
+[libraries]
+rabosh-memory = { module = "app.oreshkov:rabosh-memory", version = "0.1.1" }
+```
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>app.oreshkov</groupId>
+    <artifactId>rabosh-memory</artifactId>
+    <version>0.1.1</version>
+</dependency>
+```
+
+**[JDK 25](#requirements)** is the floor, inherited from the engine.
+
+### What the pins mean for your build
+
+This module pins `com.anthropic:anthropic-java` and `app.oreshkov:rabosh-api` at exact versions —
+never a range, never a snapshot — because there is no shared CI matrix across the repository
+boundary, and the pin is the whole of the mitigation for skew. The versions are in
+[Requirements](#requirements).
+
+That is a pin, not a lock. If your application already declares `anthropic-java` — and it probably
+does, since you are declaring the tool on a message — Gradle and Maven resolve the conflict their own
+way and your version is the one that wins. That is usually what you want, and the SDK moves weekly
+enough that holding you back would be worse. It does mean the combination you ship is one this
+repository has not run. `LiveSmokeTest` is the canary for exactly that — one real conversation driven
+through the handler — and [Building and testing](#building-and-testing) says how to run it. If you
+have moved the SDK a long way and want certainty rather than a resolved graph, that is the suite to
+run against your own version.
+
 ## What it is
 
 - The six commands — `view`, `create`, `str_replace`, `insert`, `delete`, `rename` — over one rabosh
@@ -256,6 +306,16 @@ Suspected vulnerabilities go through [private reporting](SECURITY.md), never a p
 [SECURITY.md](SECURITY.md) is also where the threat model is written down — the input is
 model-generated and therefore hostile, `scope` is a key prefix and not a boundary, and there is no
 encryption at rest.
+
+## Contributing
+
+Issues and questions are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) is worth reading before a pull
+request, because most of the surprising behaviour here is deliberate and it lists what fails
+**silently** if changed — the verbatim response strings, the ban on `java.nio.file.Path`, the
+multiple-occurrence check in `str_replace`, and the measured default for the listing index.
+Questions and "should this support X" belong in
+[discussions](https://github.com/aoreshkov/rabosh-memory/discussions) rather than issues.
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies.
 
 ## Licence
 
