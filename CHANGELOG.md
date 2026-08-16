@@ -23,11 +23,18 @@ under [CONTRACT.md](CONTRACT.md), and a change to one is a breaking change howev
 
 Nothing yet.
 
-## [0.1.0] — 2026-08-16
+## [0.1.1] — 2026-08-16
 
 The first release: the six memory-tool commands over a rabosh store, with the atomicity and the path
 handling that a directory of files cannot offer, and with the one measurement that went the other way
 written down beside them.
+
+**Why the first release is `0.1.1`.** `v0.1.0` was tagged and its release failed before anything was
+uploaded — the bundle check rejected the first bundle this project ever signed, over the checksums
+Gradle writes beside a `.asc`. The fix was a commit, and a protected tag cannot move to include one,
+so `0.1.0` was spent rather than reused. Nothing was ever published under it; there is no `0.1.0` on
+Maven Central and there never will be. The trade is the one `release.yml` states: a tag that can be
+moved after people have pinned it is worth less than a version number, and version numbers are free.
 
 ### Added
 
@@ -104,5 +111,5 @@ written down beside them.
   `.github/workflows/smoke.yml` before a release. It **fails** rather than skips without a key,
   because a smoke test that skips itself is a green run that proved nothing.
 
-[Unreleased]: https://github.com/aoreshkov/rabosh-memory/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/aoreshkov/rabosh-memory/releases/tag/v0.1.0
+[Unreleased]: https://github.com/aoreshkov/rabosh-memory/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/aoreshkov/rabosh-memory/releases/tag/v0.1.1
