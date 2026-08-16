@@ -21,8 +21,13 @@ under [CONTRACT.md](CONTRACT.md), and a change to one is a breaking change howev
 
 ## [Unreleased]
 
-Nothing yet. The entries below become `0.1.0` when the tag is pushed — see `.github/workflows/release.yml`
-for what a tag costs and what to run before spending one.
+Nothing yet.
+
+## [0.1.0] — 2026-08-16
+
+The first release: the six memory-tool commands over a rabosh store, with the atomicity and the path
+handling that a directory of files cannot offer, and with the one measurement that went the other way
+written down beside them.
 
 ### Added
 
@@ -99,4 +104,5 @@ for what a tag costs and what to run before spending one.
   `.github/workflows/smoke.yml` before a release. It **fails** rather than skips without a key,
   because a smoke test that skips itself is a green run that proved nothing.
 
-[Unreleased]: https://github.com/aoreshkov/rabosh-memory/commits/main
+[Unreleased]: https://github.com/aoreshkov/rabosh-memory/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/aoreshkov/rabosh-memory/releases/tag/v0.1.0
