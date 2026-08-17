@@ -80,7 +80,12 @@ tasks.withType<Test>().configureEach {
     testLogging {
         events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
         exceptionFormat = TestExceptionFormat.FULL
-        showStandardStreams = false
+
+        // Off for the ordinary suite, whose chatter would bury the one failure worth reading, and on
+        // behind the two dials that exist to be read: the benchmark's whole output is a table, and
+        // the live smoke test's is a transcript. `TestLoggingContainer` applies this at every log
+        // level, so `-i` is not a substitute — without this the benchmark prints into a void.
+        showStandardStreams = runBenchmarks || runLiveSmoke
     }
 
     // The engine underneath maps segments off-heap via the FFM API.
@@ -103,6 +108,40 @@ tasks.withType<Test>().configureEach {
     // test classpath to the worker through a pathing jar, so the property would be one jar of
     // manifest entries. Resolved at execution time so configuration stays cache-friendly.
     val testRuntimeClasspath = sourceSets["test"].runtimeClasspath
+    doFirst {
+        systemProperty("rabosh.memory.testClasspath", testRuntimeClasspath.asPath)
+        systemProperty("rabosh.memory.javaHome", javaLauncher.get().metadata.installationPath.asFile.absolutePath)
+    }
+}
+
+/*
+ * The crash demonstration: `CrashSafetyTest`'s rename instrument with its assertions replaced by a
+ * printout, for someone deciding whether to believe the claim rather than for CI.
+ *
+ * A `JavaExec` rather than a tagged test, deliberately. A test that cannot fail is a misuse of the
+ * word, `check` should not grow a task whose output only means something to a human reading it, and
+ * this way the console gets the printout without `showStandardStreams` being involved at all.
+ *
+ * It forks and kills a child JVM, so it needs what the `Test` tasks above need: the resolved test
+ * classpath, because on Windows `java.class.path` would be one pathing jar, and the toolchain's home
+ * so the child is the same JDK. Rounds default to five; `-Drabosh.memory.demo.rounds=N` changes it.
+ */
+val crashDemo by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Kills a JVM mid-rename, reopens the store, and prints what survived."
+
+    val testRuntimeClasspath = sourceSets["test"].runtimeClasspath
+    classpath = testRuntimeClasspath
+    mainClass = "app.oreshkov.rabosh.memory.CrashDemo"
+
+    // The engine maps segments off-heap via the FFM API, here as in the child.
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+
+    providers.systemProperty("rabosh.memory.demo.rounds").orNull?.let {
+        systemProperty("rabosh.memory.demo.rounds", it)
+    }
+
+    // Resolved at execution time so configuration stays cache-friendly, as above.
     doFirst {
         systemProperty("rabosh.memory.testClasspath", testRuntimeClasspath.asPath)
         systemProperty("rabosh.memory.javaHome", javaLauncher.get().metadata.installationPath.asFile.absolutePath)

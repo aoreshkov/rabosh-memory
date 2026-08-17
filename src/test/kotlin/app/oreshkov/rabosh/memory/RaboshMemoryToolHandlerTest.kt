@@ -395,15 +395,22 @@ class RaboshMemoryToolHandlerTest {
         }
     }
 
+    // Block body, not `=`. An expression body would return this block's last value — the
+    // `IllegalStateException` that `assertFailsWith` hands back — and JUnit silently refuses to
+    // execute a @Test method that returns anything, logging a discovery warning the build does not
+    // fail on. Every other test here can use `=` because its last expression is an `assert` returning
+    // Unit; this is the one that ends in a value, and it went un-run because of it.
     @Test
-    fun `a handler that does not own its store closes nothing`() = TestStores.withDirectory { directory ->
-        Rabosh.open(directory).use { database ->
-            val handler = RaboshMemoryToolHandler(database)
-            handler.create("/memories/a.md", "content")
-            handler.close()
-            // The store is still usable; only the handler refuses.
-            assertEquals(mapOf("/memories/a.md" to "content"), TestStores.dump(database))
-            assertFailsWith<IllegalStateException> { handler.view("/memories", noRange()) }
+    fun `a handler that does not own its store closes nothing`() {
+        TestStores.withDirectory { directory ->
+            Rabosh.open(directory).use { database ->
+                val handler = RaboshMemoryToolHandler(database)
+                handler.create("/memories/a.md", "content")
+                handler.close()
+                // The store is still usable; only the handler refuses.
+                assertEquals(mapOf("/memories/a.md" to "content"), TestStores.dump(database))
+                assertFailsWith<IllegalStateException> { handler.view("/memories", noRange()) }
+            }
         }
     }
 }
