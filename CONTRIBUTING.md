@@ -48,10 +48,14 @@ Each names what catches a breach — and where nothing does, that is said too.
 - **Accepted paths are echoed back normalised, rejected ones as given.** Changing that changes what
   the model reads back and can reuse.
 - **The listing index default is measured, not assumed.** It delivers what it promises — a directory
-  `view` reads zero documents — and that is not a speed-up: it runs at 0.58x the unindexed listing at
-  5,000 memories and 0.50x at 50,000, so it degrades with scale rather than crossing over. Do not
-  change the default without re-running `ListingIndexBenchmark`; `MemoryOptions.listingIndex` carries
-  the table.
+  `view` reads zero documents — and over every size and count measured that buys a tie at best: about
+  0.5x the unindexed listing at 64 B, 0.42x–0.75x at 50,000 × 4 KiB, and parity at 5,000 × 4 KiB with
+  the sign unresolved between JVMs. Do not change the default without re-running
+  `ListingIndexBenchmark`; `MemoryOptions.listingIndex` carries the table. **Run it with
+  `./gradlew --stop` first and quote a span across JVMs, never an average** — the numbers this
+  replaced were measured before the JIT had finished, and a later run beside a few idle daemons came
+  out four times slow. Wide ranges, or a case the report calls out as straddling parity, mean the
+  machine was busy.
 
 Two more, from `CLAUDE.md`, that are scope rather than mechanism: there is **no search and no
 embeddings** here, because the tool contract has no search command and putting one here would imply a

@@ -21,7 +21,41 @@ under [CONTRACT.md](CONTRACT.md), and a change to one is a breaking change howev
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **The listing-index figures published in 0.1.1 were measured before the JIT had finished, and are
+  corrected here.** `ListingIndexBenchmark` warmed up three times and timed a single run of twenty,
+  which is not steady state: the 64 B unindexed baseline came out roughly twice as slow as it is, and
+  the tidy conclusion drawn from it — that memory size barely moves the unindexed listing, so there
+  is no crossover to find — is not reproducible. The benchmark now warms up, takes several timed runs
+  per case, and reports a median with its range. **These figures supersede the 0.1.1 entry below**,
+  which is left as written because it records what was believed at the time.
+
+  On one developer machine, as the span of every JVM each cell was run in: **0.51x–0.53x** at
+  5,000 × 64 B, **0.92x–1.10x** at 5,000 × 4 KiB, **0.48x–0.57x** at 50,000 × 64 B, **0.42x–0.75x**
+  at 50,000 × 4 KiB. A span rather than a figure because separate JVMs disagree by more than the
+  spread within any one of them — which is why the 4 KiB row at 5,000 is reported as parity with the
+  sign unresolved rather than as the 1.10x win the first process suggested.
+
+- **A second way to publish a wrong number, found while re-measuring.** Idle Gradle daemons left
+  resident by earlier invocations turned a 1746 µs baseline into 6995 µs, because a listing reads
+  through mapped segments and what those daemons cost is page cache rather than CPU. `./gradlew
+  --stop` before a run is now documented in the README and the benchmark's KDoc, together with the
+  tell: wide ranges, or a case the report flags as straddling parity, mean a busy machine.
+
+  The conclusion survives and its reasoning does not. Memory *size* helps the index and memory
+  *count* hurts it, and over the measured range they never combine into a win — the best cell is a
+  tie — so the option still ships **off by default**. No behaviour changed and no public signature
+  moved; this is a documentation correction with a benchmark fix behind it.
+
+- **A benchmark or smoke run could be `UP-TO-DATE`, print nothing, and look like it had run.** The
+  dials are applied in `doFirst` so they are not task inputs; the `Test` task now opts out of
+  up-to-date checking whenever one is present.
+
+- **Three benchmark dials were not forwarded into the test JVM.**
+  `-Drabosh.memory.bench.warmup`, `-Drabosh.memory.bench.iterations` and
+  `-Drabosh.memory.bench.runs` reached the daemon and stopped there, which is the same silent-failure
+  shape the existing forwarding list was written to prevent.
 
 ## [0.1.1] — 2026-08-16
 
@@ -89,7 +123,8 @@ moved after people have pinned it is worth less than a version number, and versi
   `listingIndex = true` a directory `view` reads **zero documents** — asserted in `ListingIndexTest`,
   not claimed — and that is not a speed-up: `ListingIndexBenchmark` puts it at **0.58× the unindexed
   listing at 5,000 memories and 0.50× at 50,000**, so it degrades with scale rather than crossing
-  over. A scan's "document read" is an open rather than a decode, since `Variant` is a view over
+  over. *(The figures and the crossover reasoning in this paragraph were measured without adequate
+  warm-up and are corrected under [Unreleased]. The default did not change.)* A scan's "document read" is an open rather than a decode, since `Variant` is a view over
   mapped bytes; a listing is not selective, because the key range already bounds the scan to the
   subtree; both paths are linear in the rows returned and the query has the larger constant. The
   option ships **off by default** with the table written where somebody will read it, and the number

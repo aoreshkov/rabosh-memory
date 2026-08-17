@@ -76,6 +76,16 @@ tasks.withType<Test>().configureEach {
         if (!runLiveSmoke) excludeTags("smoke")
     }
 
+    // A second benchmark run with different dials is UP-TO-DATE, prints nothing, and looks exactly
+    // like a run that measured something. The dials are set in `doFirst` — they have to be, for the
+    // configuration cache — so they are not inputs and cannot make the task stale. Rather than
+    // declare them as inputs they are not, take the task out of up-to-date checking whenever a dial
+    // is present: the only reason to pass one is to want a fresh measurement.
+    // Decided here rather than inside the lambda: a predicate that reads `runBenchmarks` closes over
+    // the build script itself, which the configuration cache cannot serialize. `{ false }` captures
+    // nothing.
+    if (runBenchmarks || runLiveSmoke) outputs.upToDateWhen { false }
+
     // Property tests print the seed of a failing case; make sure it reaches the console.
     testLogging {
         events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
@@ -99,6 +109,9 @@ tasks.withType<Test>().configureEach {
         "rabosh.memory.iterations",
         "rabosh.memory.bench.memories",
         "rabosh.memory.bench.payloads",
+        "rabosh.memory.bench.warmup",
+        "rabosh.memory.bench.iterations",
+        "rabosh.memory.bench.runs",
     )) {
         providers.systemProperty(key).orNull?.let { systemProperty(key, it) }
     }

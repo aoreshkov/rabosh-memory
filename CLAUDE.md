@@ -70,11 +70,22 @@ These are settled. Reopening one is a decision, not a refactoring.
   told, because silent data loss is the one failure this store must not have.
 - **The listing index stays off by default, and the reason is measured rather than assumed.** It
   delivers what it promises — a directory `view` reads zero documents, asserted in
-  `ListingIndexTest` — and that is not a speed-up: `ListingIndexBenchmark` puts it at 0.58x the
-  unindexed listing at 5,000 memories and 0.50x at 50,000, so it degrades with scale rather than
-  crossing over. Both paths are linear in the rows returned, a listing is not selective because the
-  key range already bounds the scan to the subtree, and the query has the larger constant. Do not
-  "fix" the default without re-running the benchmark; `MemoryOptions.listingIndex` carries the table.
+  `ListingIndexTest` — and across every size and count measured that buys a tie at best:
+  0.51x–0.53x at 5,000 × 64 B, 0.48x–0.57x at 50,000 × 64 B, 0.42x–0.75x at 50,000 × 4 KiB, and
+  0.92x–1.10x at 5,000 × 4 KiB, which is parity with the sign unresolved. Spans rather than figures,
+  because separate JVMs disagree by more than the spread within one. Memory size helps the index and
+  memory count hurts it, and over this range they never combine into a win. Do not "fix" the default
+  without re-running the benchmark; `MemoryOptions.listingIndex` carries the table.
+- **Re-measure with warm-up on an idle machine, or do not quote the result.** Two ways this
+  benchmark has already produced a wrong published number. The first version warmed up three times
+  and timed one run of twenty, which timed code the JIT had not finished compiling: the 64 B
+  unindexed baseline came out 2x slow, and the table said 0.58x/0.93x/0.50x with a "no crossover"
+  story attached that longer runs do not reproduce. The second is load — idle Gradle daemons left
+  resident by earlier invocations turned a 1746 µs baseline into 6995 µs, because the listing reads
+  through mapped segments and what they cost is page cache. `./gradlew --stop` first; wide ranges or
+  a "straddles parity" line in the output mean a busy machine, not an interesting result. Anything
+  quoting this benchmark states its warm-up and run count and gives a span across JVMs, never an
+  average across them.
 
 ## Design rules that must not be quietly broken
 
