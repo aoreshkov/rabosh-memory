@@ -102,7 +102,8 @@ run against your own version.
 - A `scope` key prefix for multi-tenancy, a per-memory size cap, a `usage()` report and an
   `expireBefore()` retention helper.
 - An optional listing index, off by default. It does what it says — a directory listing reads **zero
-  documents** — and that turns out not to make it faster. See [The listing index](#the-listing-index).
+  documents** — and across every size and count measured that buys a tie at best. See
+  [The listing index](#the-listing-index).
 
 ## What it is not
 
@@ -207,25 +208,47 @@ over `$.bytes`, and a directory `view` is then a query that opens **no documents
 `documentsRead == 0`, asserted in `ListingIndexTest`.
 
 **It is off by default and measurement says leave it that way for listings.** From
-`ListingIndexBenchmark`, on one developer machine:
+`ListingIndexBenchmark`, on one developer machine, as the span of every JVM the cell was run in:
 
 | memories | memory size | listing with the index |
 |---|---|---|
-| 5,000 | 64 B | 0.58x the unindexed speed |
-| 5,000 | 4 KiB | 0.93x |
-| 50,000 | 64 B | 0.50x |
+| 5,000 | 64 B | 0.51x–0.53x the unindexed speed |
+| 5,000 | 4 KiB | 0.92x–1.10x — parity, and the sign is not resolved |
+| 50,000 | 64 B | 0.48x–0.57x |
+| 50,000 | 4 KiB | 0.42x–0.75x |
 
-The reason is the engine rather than the index. A scan's "document read" is an *open*, not a decode:
-`Variant` is a view over mapped bytes, so reading `$.bytes` out of a 4 KiB memory costs the field and
-not the memory — which is why growing each memory from 64 B to 4 KiB barely moved the unindexed
-number. And a
-listing is not selective: the key range already bounds the scan to the subtree, so the index has no
-rows to eliminate, only the same rows to produce more expensively. Both paths are linear in the
-entries returned and the index has the larger constant, so there is no crossover to find.
+**A span rather than a figure, because a figure would be a claim the measurement cannot support.**
+Separate JVMs disagree by more than the spread within any one of them, and the disagreement is not
+uniform: the 5,000 × 64 B cell repeats to within a hundredth, while 50,000 × 4 KiB — the largest
+working set here, and the one where page cache rather than CPU decides — ranges from 0.42x to 0.75x.
+Quoting a median from either would imply a precision that is not there. The 4 KiB row at 5,000 is the
+one that matters for the decision, and it is written as parity because one process put the index
+ahead at 1.10x and three put it behind between 0.92x and 0.97x.
+
+The shape is two axes pulling against each other. Memory *size* helps the index: going from 64 B to
+4 KiB roughly doubles the unindexed listing (1746 → 3757 µs at 5,000) while moving the indexed one
+much less (3419 → 4102 µs), because the scan opens a document per entry and the index opens none.
+Memory *count* hurts it: at 4 KiB the ratio falls from parity at 5,000 to somewhere below 0.75x at
+50,000. Over the range measured the two never combine into a win — the best result anywhere in the
+table is a tie — so there is no configuration here where turning it on pays for itself on listing
+latency alone.
 
 What it is still for is the case where *opening* is the cost rather than the comparison — page-cache
-footprint on a store whose memories are large and whose listings are frequent. Measure your own
-shape; the benchmark takes `-Drabosh.memory.bench.memories` and `-Drabosh.memory.bench.payloads`.
+footprint on a store whose memories are large and whose listings are frequent. The trend across the
+4 KiB rows is the reason to measure rather than assume: memories larger than 4 KiB are the direction
+in which this stops being settled. Measure your own shape:
+
+```
+./gradlew --stop && ./gradlew test -Prabosh.memory.bench
+```
+
+`-Drabosh.memory.bench.memories` and `-Drabosh.memory.bench.payloads` change the shape;
+`-Drabosh.memory.bench.warmup`, `-Drabosh.memory.bench.iterations` and `-Drabosh.memory.bench.runs`
+are there if you want to argue with the method. The `--stop` is not a ritual: idle Gradle daemons
+from earlier invocations stay resident, the listing reads through mapped segments, and a run taken
+beside them measured four times slow with every case straddling parity. **Wide ranges in the output,
+or a case reported as straddling parity, mean the machine was busy rather than that the answer is
+interesting.**
 
 **Turning it on later is not a migration**, whichever way that measurement goes. Indexes are built
 retroactively over segments already on disk — no re-ingest, no rewrite, no version bump. That is why

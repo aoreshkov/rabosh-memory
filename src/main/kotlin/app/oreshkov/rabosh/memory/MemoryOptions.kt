@@ -79,29 +79,37 @@ public class MemoryOptions(
      *
      * **`false`, and measurement says leave it that way for a directory listing.** It delivers
      * exactly what it promises — `documentsRead` is `0` with it and one per memory without, which
-     * `ListingIndexTest` asserts — and that turns out not to be a latency win here. Both paths are
-     * linear in the number of entries the listing returns, and the query's constant is the larger
-     * one, so the gap widens rather than closes as the store grows. `ListingIndexBenchmark`,
-     * measured on one developer machine:
+     * `ListingIndexTest` asserts — and over everything measured that buys a tie at best.
+     * `ListingIndexBenchmark`, on one developer machine, as the span of every JVM each cell was run
+     * in:
      *
      * | memories | memory size | listing with the index |
      * |---|---|---|
-     * | 5,000 | 64 B | 0.58x the unindexed speed |
-     * | 5,000 | 4 KiB | 0.93x |
-     * | 50,000 | 64 B | 0.50x |
+     * | 5,000 | 64 B | 0.51x–0.53x the unindexed speed |
+     * | 5,000 | 4 KiB | 0.92x–1.10x — parity, sign unresolved |
+     * | 50,000 | 64 B | 0.48x–0.57x |
+     * | 50,000 | 4 KiB | 0.42x–0.75x |
      *
-     * The reason is the engine rather than the index. A scan's "document read" is an open, not a
-     * decode: `Variant` is a view over mapped bytes, so reading `$.bytes` out of a 4 KiB memory
-     * costs the field and not the memory — which is why growing the memories tenfold barely moved
-     * the unindexed number. And a listing is not selective: the key range already bounds the scan to
-     * the subtree, so the index has no rows to eliminate, only the same rows to produce more
-     * expensively.
+     * A span per cell, not a figure, because separate JVMs disagree by more than the spread within
+     * any one of them — and unevenly, from a hundredth at 5,000 × 64 B to almost a factor of two at
+     * 50,000 × 4 KiB, where the working set is largest and page cache rather than CPU decides. The
+     * 4 KiB row at 5,000 is the case the decision turns on: one process put the index ahead at 1.10x
+     * and three put it behind between 0.92x and 0.97x, so a single number would have picked a side
+     * by accident.
+     *
+     * Two axes pull against each other. Memory size helps the index, because a scan opens a document
+     * per entry and the index opens none: from 64 B to 4 KiB the unindexed listing roughly doubles
+     * while the indexed one moves much less. Memory count hurts it, and at 4 KiB that is the axis
+     * that wins — parity at 5,000 becomes comfortably worse than parity at 50,000. A listing is also
+     * not selective: the key range already bounds the scan to the subtree, so the index has no rows
+     * to eliminate, only the same rows to produce more expensively.
      *
      * What it is still for is the case where *opening* is the cost rather than the comparison —
      * page-cache footprint on a store whose memories are large and whose listing is frequent, where
-     * touching every memory's blocks to read one integer is the thing being avoided. Measure your
-     * own shape before turning it on; the benchmark takes a `-Drabosh.memory.bench.memories` and
-     * will tell you.
+     * touching every memory's blocks to read one integer is the thing being avoided. The 4 KiB rows
+     * are where that stops being hypothetical: memories larger than 4 KiB are the direction in which
+     * this default is least settled. Measure your own shape before turning it on; the benchmark takes
+     * `-Drabosh.memory.bench.memories` and `-Drabosh.memory.bench.payloads` and will tell you.
      *
      * **Turning it on later is not a migration**, whichever way that measurement goes. Indexes are
      * built retroactively over segments that are already on disk — no re-ingest, no rewrite, no
