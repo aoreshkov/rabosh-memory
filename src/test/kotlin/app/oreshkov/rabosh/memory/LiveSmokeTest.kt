@@ -33,6 +33,12 @@ import org.junit.jupiter.api.Tag
  *
  * It **fails** rather than skips when the key is absent. A smoke test that quietly passes because it
  * did not run is worse than no smoke test, because it is reported as a green canary.
+ *
+ * The model is [DEFAULT_MODEL] and `-Drabosh.memory.smoke.model=<id>` changes it. The default is the
+ * cheapest model that can drive the tool, which is the right default for a canary whose subject is
+ * the SDK rather than the model: what it watches is the runner's dispatch, not anyone's reasoning. A
+ * release that wants one run against the model its README recommends can pass the dial rather than
+ * edit this file.
  */
 @Tag("smoke")
 class LiveSmokeTest {
@@ -91,7 +97,7 @@ class LiveSmokeTest {
                 val counting = CountingHandler(handler)
 
                 val createParams = MessageCreateParams.builder()
-                    .model(Model.CLAUDE_HAIKU_4_5)
+                    .model(model())
                     .maxTokens(1024L)
                     .addTool(BetaMemoryTool20250818.builder().build())
                     .addUserMessage(prompt)
@@ -115,6 +121,14 @@ class LiveSmokeTest {
     }
 
     private class Transcript(val commands: Int, val text: String)
+
+    private companion object {
+        /** Cheapest model that drives the tool; the canary's subject is the SDK, not the model. */
+        const val DEFAULT_MODEL: String = "claude-haiku-4-5"
+
+        fun model(): Model =
+            Model.of(System.getProperty("rabosh.memory.smoke.model").orEmpty().ifBlank { DEFAULT_MODEL })
+    }
 
     /**
      * Counts the commands the runner dispatched.

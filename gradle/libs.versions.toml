@@ -1,4 +1,4 @@
-# Centralised version catalogue. Versions verified 2026-08-16 against Maven Central: every entry is
+# Centralised version catalogue. Versions verified 2026-08-17 against Maven Central: every entry is
 # the latest stable release. No pre-releases — those need asking first.
 #
 # Dependency policy (see CLAUDE.md): JetBrains and Kotlin libraries are pre-approved; everything
@@ -7,7 +7,8 @@
 #   - `anthropic-java` is the reason this repository exists and is the one third-party *runtime*
 #     dependency it may have. Confirmed.
 #   - `junit` is test-only and never reaches the published POM. Confirmed 2026-08-16, against a
-#     hand-rolled harness, because rabosh already pins the same version for the same suites.
+#     hand-rolled harness, because rabosh already pins the same version for the same suites. The
+#     confirmation is of the dependency, not of a patch number: 6.1.2 → 6.1.3 needs no new one.
 
 [versions]
 kotlin = "2.4.10"
@@ -25,7 +26,7 @@ anthropic = "2.54.0"
 rabosh = "0.3.0"
 
 # Test-only.
-junit = "6.1.2"
+junit = "6.1.3"
 dokka = "2.2.0"
 
 # The engine's floor, and therefore this module's. FFM (Arena, MemorySegment, FileChannel.map with

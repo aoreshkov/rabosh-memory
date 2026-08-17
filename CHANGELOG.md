@@ -21,6 +21,59 @@ under [CONTRACT.md](CONTRACT.md), and a change to one is a breaking change howev
 
 ## [Unreleased]
 
+### Added
+
+- **`checkDeleteDoesNotCompact`, a build task for the one design rule nothing was watching.** `delete`
+  writes its batch and stops; reclaiming tombstones belongs to `expireBefore`, which pins a snapshot,
+  decides the set, deletes and only then compacts. A breach of that would make a command the model
+  issues mid-conversation unpredictably slow — latency rather than a wrong answer, which is precisely
+  what no assertion about behaviour can see. "Delete should free space" is also the intuitive
+  position, and the correct code for it lives in the same file as the code that must not do it. The
+  task fails `check` if `compact()` appears anywhere but `expireBefore`, and is narrow on purpose: one
+  that also forbade the correct call would be worse than none.
+
+- **How to pair the handler with context editing, in the README.** `clear_tool_uses_20250919`
+  alongside the memory tool is the configuration this store is built for, and enabling it is a change
+  to the message parameters rather than to the handler. Documented with the three consequences that
+  are specific to this implementation: the pre-clearing flush is bursty and will meet
+  `createOverwrites = false` head-on, `memory` does not belong in `exclude_tools` because its results
+  are the cheapest thing in a transcript to discard, and the burst is still one writing thread under
+  the same `maxMemoryBytes` cap.
+
+- **The manual tool-use loop, written out rather than referred to.** The README has always named
+  driving the loop yourself as the escape hatch for `is_error` fidelity, and never showed it. It now
+  carries the dispatch — a `when` over `command` onto the six methods, one `ToolResultBlockParam`
+  each — together with what keying `is_error` off the `Error: ` prefix does *not* catch, since
+  `view`'s missing-path string deliberately has no prefix.
+
+- **`-Drabosh.memory.smoke.model`.** `LiveSmokeTest` still defaults to the cheapest model that can
+  drive the tool, which is right for a canary whose subject is the SDK rather than anyone's
+  reasoning. A release that wants one run against the model the README recommends can now pass the
+  dial instead of editing the file.
+
+- **A project `.claude/settings.json`** allowlisting the `./gradlew` invocations this repository
+  documents. The live smoke test and `bundleForCentral` are deliberately *not* on that list — one
+  spends money and the other is the last step before an irreversible upload, and neither should
+  become frictionless by default.
+
+No behaviour changed and no public signature moved.
+
+### Changed
+
+- **The README now says which half of the tool is beta.** The tool itself is generally available;
+  what lives in the SDK's beta namespace is the *helper* surface this module implements —
+  `BetaMemoryToolHandler`, the runner, and the beta `MessageCreateParams` they need. A reader
+  looking at the example could reasonably have concluded that adopting this handler meant adopting a
+  beta API, and the non-beta `MemoryTool20250818` declaration is now named beside the manual loop
+  that can use it.
+
+- **A `.png` path is documented as a text memory**, under Deliberate divergences. Claude's tool
+  description promises that `view` renders image files; `create` takes `file_text`, so there are
+  none here and the model reads back what it wrote, with line numbers.
+
+- **JUnit 6.1.2 → 6.1.3.** Test-only, and inside the confirmation the catalogue already records —
+  which is of the dependency, not of a patch number.
+
 ### Fixed
 
 - **The listing-index figures published in 0.1.1 were measured before the JIT had finished, and are
