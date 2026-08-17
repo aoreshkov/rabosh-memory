@@ -112,6 +112,7 @@ tasks.withType<Test>().configureEach {
         "rabosh.memory.bench.warmup",
         "rabosh.memory.bench.iterations",
         "rabosh.memory.bench.runs",
+        "rabosh.memory.smoke.model",
     )) {
         providers.systemProperty(key).orNull?.let { systemProperty(key, it) }
     }
@@ -219,8 +220,100 @@ val checkNoNioPath = tasks.register("checkNoNioPath") {
     }
 }
 
+/*
+ * The second rule enforced as a build step, and the reason is the same as the first: it fails
+ * silently.
+ *
+ * `delete` must not call `compact()`. Tombstones are the retention job's business — `expireBefore`
+ * pins a snapshot, decides the set, deletes and *then* compacts, which is the order a drain has to
+ * use — while an interactive `delete` writes its batch and stops. Reclaiming inline would make a
+ * command the model issues mid-conversation unpredictably slow, and that is the whole failure: it
+ * shows up as latency, not as a wrong answer, so no assertion about behaviour can see it.
+ *
+ * "Delete should free space" is the intuitive position, the correct code for it lives in the same
+ * file, and until this task existed nothing stood between the two. The check is deliberately narrow —
+ * `compact()` is legitimate inside `expireBefore` and nowhere else — because a rule that also forbade
+ * the correct call would be worse than no rule.
+ */
+val checkDeleteDoesNotCompact = tasks.register("checkDeleteDoesNotCompact") {
+    group = "verification"
+    description = "Fails if compact() is called outside expireBefore."
+
+    val sources = sourceSets["main"].allSource.matching { include("**/*.kt") }
+    val report = layout.buildDirectory.file("reports/delete-does-not-compact.txt")
+
+    inputs.files(sources).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(report)
+
+    doLast {
+        // Comments go first, for the reason `checkNoNioPath` strips them: the paragraphs explaining
+        // why `delete` does not compact are themselves full of the word, and a rule that tripped over
+        // its own rationale would be unmaintainable. String literals are blanked in the same pass so
+        // that a brace inside one cannot move the function boundary found below.
+        fun code(line: String): String {
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("*") || trimmed.startsWith("//") || trimmed.startsWith("/*")) return ""
+            return line.substringBefore("//").replace(Regex("\"(\\\\.|[^\"\\\\])*\""), "\"\"")
+        }
+
+        val offenders = mutableListOf<String>()
+
+        for (file in sources.files.sortedBy { it.path }) {
+            val lines = file.readLines().map(::code)
+            val calls = lines.indices.filter { "compact(" in lines[it] }
+            if (calls.isEmpty()) continue
+
+            // The allowed window: from `expireBefore`'s declaration to the brace that closes it.
+            // Absent in every file but the handler, which is the point — a `compact()` anywhere else
+            // has no window to be inside of.
+            val declaration = lines.indexOfFirst { "fun expireBefore(" in it }
+            var window = IntRange.EMPTY
+            if (declaration >= 0) {
+                var depth = 0
+                var opened = false
+                for (index in declaration until lines.size) {
+                    depth += lines[index].count { it == '{' } - lines[index].count { it == '}' }
+                    if (depth > 0) opened = true
+                    if (opened && depth == 0) {
+                        window = declaration..index
+                        break
+                    }
+                }
+                check(window != IntRange.EMPTY) {
+                    "${file.path}: expireBefore's body is unbalanced, so this check cannot tell " +
+                        "which calls are inside it. That is a bug in the check, not in the source."
+                }
+            }
+
+            calls.filterNot { it in window }
+                .mapTo(offenders) { "${file.path}:${it + 1}: ${lines[it].trim()}" }
+        }
+
+        report.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(
+                if (offenders.isEmpty()) {
+                    "compact() is called only inside expireBefore\n"
+                } else {
+                    offenders.joinToString("\n") + "\n"
+                },
+            )
+        }
+
+        check(offenders.isEmpty()) {
+            "compact() is called outside expireBefore, in:\n" +
+                offenders.joinToString("\n") { "  $it" } +
+                "\nAn interactive command writes its batch and stops; reclaiming tombstones is " +
+                "`expireBefore`'s job and runs on the host's schedule rather than in the middle of a " +
+                "conversation. See CLAUDE.md, \"Design rules that must not be quietly broken\". If a " +
+                "new declaration genuinely needs to compact, it belongs beside `expireBefore` in the " +
+                "retention section and this check needs widening deliberately."
+        }
+    }
+}
+
 tasks.named("check") {
-    dependsOn(checkNoNioPath)
+    dependsOn(checkNoNioPath, checkDeleteDoesNotCompact)
 }
 
 /*

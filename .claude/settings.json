@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew build*)",
+      "Bash(./gradlew check*)",
+      "Bash(./gradlew test)",
+      "Bash(./gradlew test -Drabosh.memory.seed=*)",
+      "Bash(./gradlew test -Drabosh.memory.iterations=*)",
+      "Bash(./gradlew crashDemo*)",
+      "Bash(./gradlew publishToMavenLocal*)",
+      "Bash(./gradlew tasks*)",
+      "Bash(./gradlew --stop*)"
+    ],
+    "ask": [
+      "Bash(./gradlew test -Prabosh.memory.smoke*)",
+      "Bash(./gradlew bundleForCentral*)"
+    ]
+  }
+}

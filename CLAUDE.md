@@ -40,8 +40,9 @@ range and never a snapshot, because there is no shared CI matrix to catch skew.
 - **`app.oreshkov:rabosh-api`** at an exact version, pinned at `0.3.0`.
 - JetBrains and Kotlin libraries are pre-approved. **Everything else requires explicit confirmation
   from the user before it is written into `gradle/libs.versions.toml`**, with the trade against
-  writing it by hand stated first. JUnit `6.1.2` was confirmed on 2026-08-16, test-only, against a
-  hand-rolled harness; that confirmation covers JUnit and nothing else.
+  writing it by hand stated first. JUnit was confirmed on 2026-08-16, test-only, against a
+  hand-rolled harness; that confirmation covers JUnit and nothing else, and covers the dependency
+  rather than a patch number — a 6.1.x bump does not need a fresh one.
 
 ## Toolchain
 
@@ -112,8 +113,10 @@ breach; where nothing catches it, that is said too.
   mixture, and that is the property worth pointing at. Caught by `CrashSafetyTest`, which asserts the
   child was still alive when it was killed so the instrument cannot pass vacuously.
 - `delete` does not call `compact()`. Tombstones are the retention job's business, not the
-  interactive command's. **Nothing catches a breach of this** — it would show up as latency, not as
-  a failure.
+  interactive command's, and a breach shows up as latency rather than as a wrong answer — so no
+  assertion about behaviour can see it. Caught by the `checkDeleteDoesNotCompact` build task, which
+  `check` depends on: `compact()` is legitimate inside `expireBefore` and nowhere else. The check is
+  narrow on purpose, because one that also forbade the correct call would be worse than none.
 - `scope` is a key prefix, not a security boundary. One directory per end user when the threat model
   needs one. `README.md` and `CONTRACT.md` both say so; `DifferentialMemoryTest` asserts only that
   two scopes cannot see each other, which is isolation and not security.

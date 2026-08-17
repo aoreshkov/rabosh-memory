@@ -35,6 +35,14 @@ Rabosh.open(Path.of("memories")).use { db ->
 `RaboshMemoryToolHandler.open(Path.of("memories"))` is the one-liner for a host whose only use for
 rabosh is this handler; it opens the store, owns it, and closes it with the handler.
 
+**The `Beta` prefixes above belong to the tool runner, not to the memory tool.** The tool itself is
+generally available and needs no beta header — declared on an ordinary `client.messages()` call it is
+`com.anthropic.models.messages.MemoryTool20250818`. What lives in the SDK's beta namespace is the
+*helper* surface: `BetaMemoryToolHandler`, `BetaToolRunner` and the beta `MessageCreateParams` they
+require. Using this handler with the runner therefore means depending on a beta helper, and driving
+the loop yourself means not depending on one — see
+[Errors, and one limitation of the tool runner](#errors-and-one-limitation-of-the-tool-runner).
+
 ## Installation
 
 One coordinate. Both dependencies below are declared `api` rather than `implementation`, because
@@ -147,7 +155,104 @@ specification is explicit that this is fine — *"Claude reads whatever text you
 reserved for genuine faults: the store closed, IO failed, the lock was lost.
 
 **If you need `is_error` fidelity on expected outcomes, drive the tool-use loop yourself** rather
-than using the runner. The six methods are the whole surface; nothing here depends on the runner.
+than using the runner. The six methods are the whole surface; nothing here depends on the runner —
+and this is also the path that keeps you off the beta helper namespace entirely, since the tool
+declaration on a plain `client.messages()` call is `MemoryTool20250818`.
+
+The loop is the ordinary one: call, check `stop_reason` for `tool_use`, answer every `tool_use` block
+in a single user turn, repeat. The only part specific to this handler is the dispatch, which is a
+`when` over `command` and one `ToolResultBlockParam` per call:
+
+```kotlin
+fun memoryResult(block: ToolUseBlock, handler: RaboshMemoryToolHandler): ToolResultBlockParam {
+    val input = block._input().asObject().orElseThrow()
+    fun text(field: String): String = input[field]?.asString()?.orElse("").orEmpty()
+    fun number(field: String): Long = input[field]?.asNumber()?.orElseThrow()?.toLong() ?: 0L
+
+    val viewRange: Optional<List<Long>> = Optional.ofNullable(
+        input["view_range"]?.asArray()?.orElse(null)?.map { it.asNumber().orElseThrow().toLong() },
+    )
+
+    val answer = when (val command = text("command")) {
+        "view" -> handler.view(text("path"), viewRange)
+        "create" -> handler.create(text("path"), text("file_text"))
+        "str_replace" -> handler.strReplace(text("path"), text("old_str"), text("new_str"))
+        "insert" -> handler.insert(text("path"), number("insert_line"), text("insert_text"))
+        "delete" -> handler.delete(text("path"))
+        "rename" -> handler.rename(text("old_path"), text("new_path"))
+        else -> "Error: unknown command $command"
+    }
+
+    return ToolResultBlockParam.builder()
+        .toolUseId(block.id())
+        .content(answer)
+        .isError(answer.startsWith("Error: "))   // the half the runner cannot give you
+        .build()
+}
+```
+
+`isError` is keyed off the prefix here because that is the cheapest rule that matches this handler's
+strings, and it is worth knowing what it does *not* catch: `view`'s missing-path string has no
+`Error: ` prefix — see [Deliberate divergences](#deliberate-divergences) — so that one outcome
+arrives as a successful result whose text says otherwise. Key off the return value of the specific
+command instead if that distinction matters to you.
+
+## Context editing, and what it does to this store
+
+A store that outlives the context window is only interesting once the context window is actually
+being cleared, so the pairing Anthropic recommends — the memory tool together with
+`clear_tool_uses_20250919` — is the case this module is built for. Enabling it is a change to the
+message parameters, not to the handler:
+
+```kotlin
+val createParams = MessageCreateParams.builder()      // com.anthropic.models.beta.messages, as above
+    .model(Model.CLAUDE_OPUS_5)
+    .maxTokens(4096L)
+    .addTool(BetaMemoryTool20250818.builder().build())
+    // AnthropicBeta is one package up, in com.anthropic.models.beta; the three builders below sit
+    // beside MessageCreateParams.
+    .addBeta(AnthropicBeta.CONTEXT_MANAGEMENT_2025_06_27)
+    .contextManagement(
+        BetaContextManagementConfig.builder()
+            .addEdit(
+                BetaClearToolUses20250919Edit.builder()
+                    .trigger(BetaInputTokensTrigger.builder().value(30_000L).build())
+                    .keep(BetaToolUsesKeep.builder().value(3L).build())
+                    .build(),
+            )
+            .build(),
+    )
+    .addUserMessage("…")
+    .build()
+```
+
+`ToolRunnerCreateParams` takes those as its `initialMessageParams`, so the beta and the
+configuration reach the API through the runner with no further plumbing and the handler is not
+involved in the decision at all. `BetaCompact20260112Edit` is available the same way if you want
+server-side compaction as well — the two solve different halves of the same problem, and the
+specification suggests running both.
+
+Three things follow that are worth knowing before you turn it on.
+
+**The flush is bursty, and it will produce `create` errors.** As the clearing threshold approaches,
+Claude is warned and writes what it wants to keep before its tool results disappear. That burst is
+where this store's one deliberate divergence becomes visible: a flush that re-`create`s a path it
+already wrote earlier in the same session gets `Error: File … already exists` rather than an
+overwrite. This is the documented behaviour working — the model reads the file back and edits it —
+and it is the shape to expect in a transcript rather than a bug to report. `MemoryOptions(createOverwrites = true)`
+is the other choice, and the trade is unchanged by context editing: overwriting costs you the memory
+whose existence the model had forgotten.
+
+**Do not put `memory` in `exclude_tools`.** That option exists for results that are expensive to
+obtain again — a web search, a paid API call. Memory results are the opposite of that: they are the
+cheapest thing in the transcript to throw away, because every one of them can be read back off disk
+with a `view` whenever it is next needed. Excluding them keeps bytes in the context window that the
+store already holds.
+
+**The burst is still one writing thread.** Several memories arriving at once is the same single-writer
+path as any other sequence of commands — see [Requirements](#requirements) — and each is still capped
+by `maxMemoryBytes`. Neither is a new constraint; the flush is simply where they are most likely to
+be met for the first time.
 
 ## Deliberate divergences
 
@@ -183,6 +288,12 @@ number. The reference implementation reports an inode size instead, which is why
 
 **An empty `old_str` is answered with "did not appear verbatim".** It matches at every position, and
 the reference implementation would report one line number per character of the file.
+
+**A `.png` path is a text memory like any other.** Claude's tool description tells it that `view`
+displays image files — `.jpg`, `.jpeg` and `.png` — so it may well `view` one. There are no image
+files here: `create` takes `file_text`, so a memory whose path happens to end in `.png` is rendered
+with line numbers like every other. Nothing is lost, since the model can only read back what it
+wrote, but the promise its tool description makes is one this store has no way to keep.
 
 **Four strings are additions**, because the specification asks integrators to enforce something and
 supplies no wording:
@@ -289,6 +400,7 @@ indefinitely. It is a rollback *window*. It is not audit.
 ./gradlew test -Drabosh.memory.iterations=600       # more generated scripts
 ./gradlew test -Prabosh.memory.bench                # the listing benchmark, excluded from build
 ANTHROPIC_API_KEY=… ./gradlew test -Prabosh.memory.smoke   # one real conversation, excluded from build
+ANTHROPIC_API_KEY=… ./gradlew test -Prabosh.memory.smoke -Drabosh.memory.smoke.model=claude-opus-5
 ```
 
 The suites, and what each is for:
@@ -304,8 +416,10 @@ The suites, and what each is for:
 | `LiveSmokeTest` | One real conversation, to catch the SDK moving. It **fails** rather than skips without a key |
 
 `checkNoNioPath` fails the build if a main source outside the store-directory allowlist uses
-`java.nio.file.Path`, and `checkKotlinAbi` fails it if the published surface changed without the
-committed dump in `api/` changing with it.
+`java.nio.file.Path`; `checkDeleteDoesNotCompact` fails it if `compact()` is called anywhere but
+`expireBefore`, because an interactive `delete` that reclaimed tombstones inline would be slow rather
+than wrong and no test would see it; and `checkKotlinAbi` fails it if the published surface changed
+without the committed dump in `api/` changing with it.
 
 CI runs `build` on Linux **and** Windows, and both are load-bearing rather than a formality:
 `MemoryPathTest` covers the Windows path spellings that are the reason normalisation is a string
