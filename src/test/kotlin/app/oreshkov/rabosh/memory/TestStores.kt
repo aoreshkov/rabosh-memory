@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // The project is retired; the tests keep exercising what shipped.
+
 package app.oreshkov.rabosh.memory
 
 import app.oreshkov.rabosh.api.Rabosh

@@ -90,7 +90,21 @@ import kotlin.math.floor
  * `memory_20250818` is a *dated* type id. A `memory_2027xxxx` with extra commands would mean a new
  * handler interface, not a patch — so this class is `open`, each command is `open`, and the store
  * and options a subclass would need are `protected`. [MemoryPath] is public for the same reason.
+ *
+ * ### Deprecated
+ *
+ * **rabosh-memory is no longer maintained, and 0.2.0 is its final release.** rabosh, the engine
+ * underneath it, has been retired in favour of [Delva](https://github.com/aoreshkov/delva), which has
+ * its own API and on-disk format and no memory-tool handler. The class is deprecated rather than
+ * changed: nothing was removed and no behaviour moved, so code that compiled against 0.1.x still
+ * compiles, with a warning. There is no drop-in replacement on the JVM; `BetaMemoryToolHandler` is
+ * six methods, and implementing it over a store you maintain is the way forward.
  */
+@Deprecated(
+    message = "rabosh-memory is no longer maintained: rabosh, the engine under it, has been retired. " +
+        "Implement BetaMemoryToolHandler over a store you maintain; see https://github.com/aoreshkov/rabosh-memory.",
+    level = DeprecationLevel.WARNING,
+)
 public open class RaboshMemoryToolHandler private constructor(
     /** The store this handler reads and writes. Not closed by [close] unless [open] created it. */
     protected val database: Rabosh,
@@ -673,6 +687,8 @@ public open class RaboshMemoryToolHandler private constructor(
          */
         @JvmStatic
         @JvmOverloads
+        // Rabosh.open is deprecated in the engine's final release, for the same reason this class is.
+        @Suppress("DEPRECATION")
         public fun open(
             directory: Path,
             options: MemoryOptions = MemoryOptions.DEFAULT,
@@ -734,6 +750,7 @@ private class ListingEntry(val segments: List<String>, val bytes: Long)
  * a file `p.md` come out `p/`, `p/…`, `p.md` here and `p.md`, `p/`, `p/…` from a path sort, because
  * `.` sorts before `/`. Cheap to get right, and invisible until two listings are compared.
  */
+@Suppress("DEPRECATION") // Uses RaboshMemoryToolHandler.humanSize; it is the handler's own helper.
 private class ListingNode {
     val children = LinkedHashMap<String, ListingNode>()
     private var ownBytes: Long = 0

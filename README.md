@@ -6,6 +6,15 @@
 [![Licence: Apache 2.0](https://img.shields.io/badge/Licence-Apache%202.0-blue)](LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/aoreshkov/rabosh-memory/badge)](https://scorecard.dev/viewer/?uri=github.com/aoreshkov/rabosh-memory)
 
+> [!WARNING]
+> **rabosh-memory is no longer maintained, and 0.2.0 is its final release.** The storage engine
+> underneath it, [rabosh](https://github.com/aoreshkov/rabosh), has been retired in favour of
+> [Delva](https://github.com/aoreshkov/delva), which has its own API and on-disk format and does not
+> ship a memory-tool handler. There is no drop-in replacement on the JVM: `BetaMemoryToolHandler` is
+> six methods, and implementing it over a store you maintain is the way forward. The versions already
+> on Maven Central stay there and keep resolving, because Central never removes a published release,
+> but nothing further will be published, fixed or answered here.
+
 The Anthropic **memory tool**, backed by [rabosh](https://github.com/aoreshkov/rabosh) instead of a
 directory of files.
 
@@ -53,7 +62,7 @@ not name either one yourself.
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("app.oreshkov:rabosh-memory:0.1.1")
+    implementation("app.oreshkov:rabosh-memory:0.2.0")
 }
 ```
 
@@ -62,7 +71,7 @@ With a version catalogue:
 ```toml
 # gradle/libs.versions.toml
 [libraries]
-rabosh-memory = { module = "app.oreshkov:rabosh-memory", version = "0.1.1" }
+rabosh-memory = { module = "app.oreshkov:rabosh-memory", version = "0.2.0" }
 ```
 
 Maven:
@@ -71,7 +80,7 @@ Maven:
 <dependency>
     <groupId>app.oreshkov</groupId>
     <artifactId>rabosh-memory</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -130,7 +139,7 @@ JDK 25, the same floor as the engine. Two pinned dependencies and no others:
 | | |
 |---|---|
 | `com.anthropic:anthropic-java` | `2.54.0` |
-| `app.oreshkov:rabosh-api` | `0.3.0` |
+| `app.oreshkov:rabosh-api` | `0.4.0` |
 
 Both are **exact pins, never ranges and never snapshots**. There is no shared CI matrix across the
 repository boundary, so the pin is the whole of the mitigation for cross-repo skew, and the live

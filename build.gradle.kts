@@ -11,7 +11,10 @@ plugins {
     signing
 }
 
-description = "The Anthropic memory tool, backed by rabosh instead of a directory of files."
+// The description opens with the deprecation because it is what central.sonatype.com and IDE
+// dependency search display, and Central has no other way to mark a component unmaintained.
+description = "DEPRECATED, no longer maintained: rabosh, the engine underneath, has been retired. " +
+    "The Anthropic memory tool, backed by rabosh instead of a directory of files."
 
 kotlin {
     jvmToolchain(libs.versions.jvmToolchain.get().toInt())
