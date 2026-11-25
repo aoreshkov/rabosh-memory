@@ -315,6 +315,11 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.md <<EOF
+          > [!WARNING]
+          > **rabosh-memory is no longer maintained, and this is its final release.** The engine under
+          > it, [rabosh](https://github.com/aoreshkov/rabosh), has been retired in favour of
+          > [Delva](https://github.com/aoreshkov/delva), which ships no memory-tool handler.
+
           Published to Maven Central under \`app.oreshkov\`.
 
           \`\`\`kotlin

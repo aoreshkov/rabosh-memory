@@ -4,6 +4,11 @@ A `BetaMemoryToolHandler` backed by [rabosh](https://github.com/aoreshkov/rabosh
 application can give Claude the Anthropic memory tool over a durable, crash-safe,
 retroactively-indexable store instead of a hand-rolled file handler.
 
+**Retired.** rabosh has been retired in favour of Delva, and this module with it: 0.2.0 is the final
+release, `RaboshMemoryToolHandler` is `@Deprecated(WARNING)`, and the notice is in the README, the
+CHANGELOG, `SECURITY.md`, the POM description and the release notes. No new features. The
+conventions below describe how the code was built and still hold for anyone reading it.
+
 The parent `CLAUDE.md`, one directory up in the working tree and not part of this repository, applies
 here unchanged: public on GitHub under
 **aoreshkov**, squashed public history, `docs/` never committed — and, because this file is itself
@@ -37,7 +42,7 @@ range and never a snapshot, because there is no shared CI matrix to catch skew.
 - **`com.anthropic:anthropic-java` is the reason this repository exists**, and is the one third-party
   runtime dependency it may have. Pinned at `2.54.0`; do not chase releases — `LiveSmokeTest` is the
   canary, and it compiles against the pinned surface even when it is not run.
-- **`app.oreshkov:rabosh-api`** at an exact version, pinned at `0.3.0`.
+- **`app.oreshkov:rabosh-api`** at an exact version, pinned at `0.4.0` — the engine's final release.
 - JetBrains and Kotlin libraries are pre-approved. **Everything else requires explicit confirmation
   from the user before it is written into `gradle/libs.versions.toml`**, with the trade against
   writing it by hand stated first. JUnit was confirmed on 2026-08-16, test-only, against a

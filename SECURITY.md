@@ -28,13 +28,14 @@ single-maintainer project — but you will be credited in the advisory unless yo
 
 ## Supported versions
 
-Pre-1.0, and there is no release with long-term support. Fixes go to the latest release line and
-nowhere else.
+**None.** rabosh-memory is no longer maintained, and 0.2.0 is its final release; the engine
+underneath it has been retired too. A report is still read, and a confirmed vulnerability gets a
+published advisory so users know to move off, but no fixed release will follow.
 
 | Version | Supported |
 | --- | --- |
-| Latest `0.x` release | Yes |
-| Anything earlier | No — upgrade |
+| `0.2.0`, the final release | No — the project is retired |
+| Anything earlier | No |
 
 Upgrading does not mean rewriting your memories. This module defines no format of its own — it writes
 ordinary documents through rabosh's public API — so what protects the bytes is the engine's promise

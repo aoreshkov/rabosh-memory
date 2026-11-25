@@ -1,4 +1,5 @@
 @file:JvmName("CrashChild")
+@file:Suppress("DEPRECATION") // The project is retired; the tests keep exercising what shipped.
 
 package app.oreshkov.rabosh.memory
 

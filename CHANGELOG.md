@@ -19,7 +19,26 @@ may change in any release; what will not change silently is the committed ABI du
 the six commands' **response strings**, reproduced verbatim from the specification. Those are covered
 under [CONTRACT.md](CONTRACT.md), and a change to one is a breaking change however small the diff.
 
-## [Unreleased]
+## [0.2.0] — 2026-11-25
+
+**This is rabosh-memory's final release, and the project is no longer maintained.** The engine
+underneath it, [rabosh](https://github.com/aoreshkov/rabosh), has been retired in favour of
+[Delva](https://github.com/aoreshkov/delva). Everything below the Deprecated section is the work done
+since 0.1.1, released so it is not stranded on `main`.
+
+### Deprecated
+
+- **The whole project, and `RaboshMemoryToolHandler` in particular.** The handler is the one class
+  every consumer constructs, so it carries `@Deprecated` at `WARNING` level. Nothing was removed and
+  no behaviour changed, so code that compiled against 0.1.1 still compiles, with a warning. The
+  published POM's description now opens with the same notice, because the description is what
+  central.sonatype.com shows and Central has no other way to mark a component unmaintained.
+- **There is no successor module.** Delva replaces rabosh as an engine, with its own API and on-disk
+  format, but it ships no memory-tool handler, and a rabosh store does not open in it. So this is not
+  a Maven relocation: a relocation tells a build tool two coordinates are interchangeable, and nothing
+  is interchangeable with this one. On the JVM, `BetaMemoryToolHandler` is six methods; implementing it
+  over a store you maintain is the way forward, and this repository's `CONTRACT.md` and tests stay
+  readable as a description of what a faithful implementation has to get right.
 
 ### Added
 
@@ -70,6 +89,10 @@ No behaviour changed and no public signature moved.
 - **A `.png` path is documented as a text memory**, under Deliberate divergences. Claude's tool
   description promises that `view` renders image files; `create` takes `file_text`, so there are
   none here and the model reads back what it wrote, with line numbers.
+
+- **`rabosh-api` 0.3.0 → 0.4.0**, the engine's final release, so that this final release sits on it
+  rather than on a version that has since been superseded. 0.4.0 deprecates `Rabosh.open`; that is a
+  compiler warning in your code where you call it, and nothing more.
 
 - **JUnit 6.1.2 → 6.1.3.** Test-only, and inside the confirmation the catalogue already records —
   which is of the dependency, not of a patch number.
@@ -177,7 +200,7 @@ moved after people have pinned it is worth less than a version number, and versi
   not claimed — and that is not a speed-up: `ListingIndexBenchmark` puts it at **0.58× the unindexed
   listing at 5,000 memories and 0.50× at 50,000**, so it degrades with scale rather than crossing
   over. *(The figures and the crossover reasoning in this paragraph were measured without adequate
-  warm-up and are corrected under [Unreleased]. The default did not change.)* A scan's "document read" is an open rather than a decode, since `Variant` is a view over
+  warm-up and are corrected under [0.2.0]. The default did not change.)* A scan's "document read" is an open rather than a decode, since `Variant` is a view over
   mapped bytes; a listing is not selective, because the key range already bounds the scan to the
   subtree; both paths are linear in the rows returned and the query has the larger constant. The
   option ships **off by default** with the table written where somebody will read it, and the number
@@ -199,5 +222,5 @@ moved after people have pinned it is worth less than a version number, and versi
   `.github/workflows/smoke.yml` before a release. It **fails** rather than skips without a key,
   because a smoke test that skips itself is a green run that proved nothing.
 
-[Unreleased]: https://github.com/aoreshkov/rabosh-memory/compare/v0.1.1...HEAD
+[0.2.0]: https://github.com/aoreshkov/rabosh-memory/releases/tag/v0.2.0
 [0.1.1]: https://github.com/aoreshkov/rabosh-memory/releases/tag/v0.1.1

@@ -23,7 +23,10 @@ anthropic = "2.54.0"
 # `rabosh-api` moves on a format-permanence cadence. Its transitive closure is rabosh-query,
 # rabosh-index, rabosh-catalog, rabosh-core, rabosh-jsonpath, rabosh-variant and the Kotlin stdlib —
 # no other third party, which is the claim this repository exists to keep true of the engine.
-rabosh = "0.3.0"
+#
+# 0.4.0 is rabosh's final release, and this module's final release is built against it. It deprecates
+# `Rabosh.open`, which is why the call sites here suppress DEPRECATION.
+rabosh = "0.4.0"
 
 # Test-only.
 junit = "6.1.3"
